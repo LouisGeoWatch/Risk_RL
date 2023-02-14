@@ -20,13 +20,32 @@ map_graph = np.array([
 nb_player = 3
 
 # Vector of presence on the map
-possession_map = np.random.choice(nb_player, len(map_graph))
+# P[i, j] = #troops of player i in zone j
+presence_map = np.array([
+    [2,2,0,0,0,0],
+    [0,0,2,2,0,0],
+    [0,0,0,0,2,2]
+])
+
+
+# Probabilities of winning
+proba_table = np.array([
+    [0,0,0,0,0,0,0,0],
+    [42,11,3,1,0,0,0,0],
+    [75,36,20,9,5,2,1,0],
+    [92,65,47,31,21,14,8,5],
+    [97,78,64,47,36,25,18,12],
+    [99,89,77,64,50,40,29,22],
+    [100,93,86,75,64,52,42,33],
+    [100,97,91,83,74,64,53,45]
+])
 
 class Game():
     def __init__(self):
         self.map = map_graph
-        self.player_map = possession_map
+        self.player_map = presence_map
         self.players = nb_player
+        self.proba_table = proba_table
         self.turn = 0
         self.phase = 0
     
@@ -36,6 +55,14 @@ class Game():
     def next_phase(self):
         self.phase = (self.phase + 1) % 3
 
-    def update_after_conquest(self, winner_name, siege):
-        self.player_map[siege] = winner_name
+    def result_battle(self, player1, player2, siege):
+        # Returns winner first, loser second
+        troop1 = min(presence_map[player1][siege],7)
+        troop2 = min(presence_map[player2][siege],7)
+        proba = proba_table[troop1, troop2]/100
+        rng = np.random.random()
+        if rng <= proba:
+            return player1, player2
+        else:
+            return player2, player1
     
