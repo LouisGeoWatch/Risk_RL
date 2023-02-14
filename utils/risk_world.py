@@ -56,13 +56,13 @@ class Game():
         self.phase = (self.phase + 1) % 3
 
     def result_battle(self, player1, player2, siege):
-        # Returns winner first, loser second
+        # Returns winner first, loser second, and siege
         troop1 = min(presence_map[player1][siege],7)
         troop2 = min(presence_map[player2][siege],7)
         proba = proba_table[troop1, troop2]/100
         rng = np.random.random()
         if rng <= proba:
-            return player1, player2
+            return player1, player2, siege
         else:
-            return player2, player1
+            return player2, player1, siege
     
