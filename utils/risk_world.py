@@ -43,7 +43,7 @@ proba_table = np.array([
 class Game():
     def __init__(self):
         self.map = map_graph
-        self.player_map = presence_map
+        self.presence_map = presence_map
         self.players = nb_player
         self.proba_table = proba_table
         self.turn = 0
@@ -54,15 +54,24 @@ class Game():
     
     def next_phase(self):
         self.phase = (self.phase + 1) % 3
+    
+    def mobilize(self, n, player, zone):
+        self.presence_map[player, zone] += n
+    
+    def retreat(self, n, player, zone_from, zone_to):
+        self.presence_map[player, zone_from] -= n
+        self.presence_map[player, zone_to] += n
 
-    def result_battle(self, player1, player2, siege):
+    def result_battle(self, player1, player2, zone):
         # Returns winner first, loser second, and siege
-        troop1 = min(self.presence_map[player1][siege],7)
-        troop2 = min(self.presence_map[player2][siege],7)
+        troop1 = min(self.presence_map[player1][zone],7)
+        troop2 = min(self.presence_map[player2][zone],7)
         proba = self.proba_table[troop1, troop2]/100
         rng = np.random.random()
         if rng <= proba:
-            return player1, player2, siege
+            self.presence_map[player2,zone] = 0
+            return player1, player2, zone
         else:
-            return player2, player1, siege
+            self.presence_map[player1,zone] = 0
+            return player2, player1, zone
     
