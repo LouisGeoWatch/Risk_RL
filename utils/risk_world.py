@@ -57,9 +57,9 @@ class Game():
 
     def result_battle(self, player1, player2, siege):
         # Returns winner first, loser second, and siege
-        troop1 = min(presence_map[player1][siege],7)
-        troop2 = min(presence_map[player2][siege],7)
-        proba = proba_table[troop1, troop2]/100
+        troop1 = min(self.presence_map[player1][siege],7)
+        troop2 = min(self.presence_map[player2][siege],7)
+        proba = self.proba_table[troop1, troop2]/100
         rng = np.random.random()
         if rng <= proba:
             return player1, player2, siege
