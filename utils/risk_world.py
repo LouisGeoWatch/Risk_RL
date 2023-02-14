@@ -7,7 +7,7 @@ import numpy as np
 # 3 : Africa
 # 4 : Asia
 # 5 : South-Asia / Oceania
-graph = np.array([
+map_graph = np.array([
     [0,1,1,0,1,0],
     [1,0,1,0,0,0],
     [1,1,0,1,1,0],
@@ -19,9 +19,13 @@ graph = np.array([
 # Nb player
 nb_player = 3
 
-class Environnement():
+# Vector of presence on the map
+possession_map = np.random.choice(nb_player, len(map_graph))
+
+class Game():
     def __init__(self):
-        self.map = graph
+        self.map = map_graph
+        self.player_map = possession_map
         self.players = nb_player
         self.turn = 0
         self.phase = 0
@@ -31,5 +35,7 @@ class Environnement():
     
     def next_phase(self):
         self.phase = (self.phase + 1) % 3
-    
+
+    def update_after_conquest(self, winner_name, siege):
+        self.player_map[siege] = winner_name
     
