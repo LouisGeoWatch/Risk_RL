@@ -1,5 +1,6 @@
 import numpy as np
 from utils.world import World
+from utils.agent import Agent
 
 # World Map
 # 0 : North America
@@ -87,14 +88,10 @@ class Game():
         self.proba_table = proba_table
         self.turn = 0
         self.phase = 0
+        self.game_over = False
 
         self.world = World(self.map_graph, self.presence_map, self.players)
-
-    def next_player_turn(self):
-        self.turn = (self.turn + 1) % self.players
-
-    def next_phase(self):
-        self.phase = (self.phase + 1) % 3
+        self.agents = {i: Agent() for i in range(self.players)}
 
     def attack_outcomes(self, p):
         """Returns a list of possible attacks for player p
@@ -121,3 +118,32 @@ class Game():
         else:
             self.presence_map[player1, zone] = 0
             return player2, player1, zone
+
+    def turn(self):
+        """Runs a turn of the game"""
+        for p in range(self.players):
+
+            # Mobilization phase
+            reinforcements = self.world.get_reinforcements(p)
+            t, n = self.agents[p].choose_deploy(reinforcements)
+            self.world.deploy(p, t, n)
+
+            # Attack phase
+            attack_outcomes = self.attack_outcomes(p)
+            attack = self.agents[p].choose_attack(attack_outcomes)
+            if attack is not None:
+                t, a = attack
+                self.world.attack(p, t, a)
+                self.result_battle(p, self.world.get_owner(a), a)
+
+            # Fortification phase
+            t_orig, t_dest, n = self.agents[p].choose_fortify()
+            self.world.fortify(p, t_orig, t_dest, n)
+
+        # Check if game is over
+        pass
+
+    def run(self):
+        """Runs the game until it is over"""
+        while not self.game_over():
+            self.turn()

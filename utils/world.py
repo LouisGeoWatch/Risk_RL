@@ -1,32 +1,5 @@
 import numpy as np
 
-# World Map
-# 0 : North America
-# 1 : South America
-# 2 : Europe
-# 3 : Africa
-# 4 : Asia
-# 5 : South-Asia / Oceania
-map_graph = np.array([
-    [0, 1, 1, 0, 1, 0],
-    [1, 0, 1, 0, 0, 0],
-    [1, 1, 0, 1, 1, 0],
-    [0, 1, 1, 0, 0, 0],
-    [1, 0, 1, 0, 0, 1],
-    [0, 0, 0, 0, 1, 0]
-])
-
-# Nb player
-nb_players = 3
-
-# Vector of presence on the map
-# P[i, j] = #troops of player i in zone j
-presence_map = np.array([
-    [2, 2, 0, 0, 0, 0],
-    [0, 0, 2, 2, 0, 0],
-    [0, 0, 0, 0, 2, 2]
-])
-
 
 class World():
     def __init__(self, map_graph, presence_map, nb_players):
@@ -44,7 +17,7 @@ class World():
         """Deploys n troops for player p on territory t"""
         self.presence_map[p][t] += n
 
-    def retreat(self, n, p, t_orig, t_dest):
+    def fortify(self, p, t_orig, t_dest, n):
         """Relocates n troops of player p
             from territory t_orig to territory t_dest"""
         self.presence_map[p, t_orig] -= n
