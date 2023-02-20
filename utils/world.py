@@ -61,6 +61,12 @@ class World():
 
         return target_list
 
+    def get_available_fortifications(self, p, t):
+        """Returns the possible fortifications of player p
+            from territory t as a list of edges"""
+        return [(t, a) for a in self.get_neighbors(t)
+                if self.get_owner(a) == p]
+
     def get_reinforcements(self, p):
         """Returns the number of reinforcements
             based on the number ot territories

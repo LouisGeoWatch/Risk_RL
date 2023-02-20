@@ -1,14 +1,9 @@
 import numpy as np
 from utils.world import World
 from utils.agent import Agent
+from utils.viz import draw_graph
 
 # World Map
-# 0 : North America
-# 1 : South America
-# 2 : Europe
-# 3 : Africa
-# 4 : Asia
-# 5 : South-Asia / Oceania
 map_graph = np.array([
     [0, 1, 1, 0, 1, 0],
     [1, 0, 1, 0, 0, 0],
@@ -17,6 +12,15 @@ map_graph = np.array([
     [1, 0, 1, 0, 0, 1],
     [0, 0, 0, 0, 1, 0]
 ])
+
+# Countries names
+countries = {0: "North America",
+             1: "South America",
+             2: "Europe",
+             3: "Africa",
+             4: "Asia",
+             5: "South-Asia / Oceania"
+             }
 
 # Nb player
 nb_player = 3
@@ -29,7 +33,6 @@ presence_map = np.array([
     [0, 0, 0, 0, 2, 2]
 ])
 
-
 # Probabilities of winning
 proba_table = np.array([
     [0, 0, 0, 0, 0, 0, 0, 0],
@@ -41,6 +44,9 @@ proba_table = np.array([
     [100, 93, 86, 75, 64, 52, 42, 33],
     [100, 97, 91, 83, 74, 64, 53, 45]
 ])
+
+colors = {0: 'red', 1: 'blue', 2: 'green', 3: 'yellow',
+          4: 'purple', 5: 'orange', 6: 'black', 7: 'white'}
 
 
 # class Game():
@@ -89,6 +95,8 @@ class Game():
         self.turn = 0
         self.phase = 0
         self.game_over = False
+        self.countries = countries
+        self.colors = colors
 
         self.world = World(self.map_graph, self.presence_map, self.players)
         self.agents = {i: Agent() for i in range(self.players)}
@@ -106,18 +114,20 @@ class Game():
                  )
                 for (t, a) in target_pairs]
 
-    def result_battle(self, player1, player2, zone):
-        """Returns winner first, loser second, and siege"""
-        troop1 = min(self.presence_map[player1][zone], 7)
-        troop2 = min(self.presence_map[player2][zone], 7)
+    def resolve_battle(self, player1, player2, t_orig, t_dest):
+        """Updates the presence map according to the battle outcome"""
+        troop1 = min(self.presence_map[player1][t_orig], 7)
+        troop2 = min(self.presence_map[player2][t_dest], 7)
         proba = self.proba_table[troop1, troop2]/100
         rng = np.random.random()
+
         if rng <= proba:
-            self.presence_map[player2, zone] = 0
-            return player1, player2, zone
+            self.presence_map[player2, t_dest] = 0
+            n = self.agents[player1].choose_conquest(t_orig, t_dest)
+            self.presence_map[player1, t_dest] = n
+            self.presence_map[player1, t_orig] -= n
         else:
-            self.presence_map[player1, zone] = 0
-            return player2, player1, zone
+            self.presence_map[player1, t_orig] = 1
 
     def turn(self):
         """Runs a turn of the game"""
@@ -132,9 +142,8 @@ class Game():
             attack_outcomes = self.attack_outcomes(p)
             attack = self.agents[p].choose_attack(attack_outcomes)
             if attack is not None:
-                t, a = attack
-                self.world.attack(p, t, a)
-                self.result_battle(p, self.world.get_owner(a), a)
+                t_orig, t_dest = attack
+                self.resolve_battle(p, self.world.get_owner(t_dest), t_orig, t_dest)
 
             # Fortification phase
             t_orig, t_dest, n = self.agents[p].choose_fortify()
@@ -147,3 +156,12 @@ class Game():
         """Runs the game until it is over"""
         while not self.game_over():
             self.turn()
+
+    def visualize(self):
+        """Visualizes the game with networkx package"""
+        labels = {i: f"{i}: {self.countries[i]} ({self.presence_map[0, i]})"
+                  for i in range(self.map_graph.shape[0])}
+        owners = np.argmax(self.presence_map, axis=0)
+        colors = [self.colors[i] for i in owners]
+
+        draw_graph(self.map_graph, colors, labels)
