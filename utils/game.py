@@ -143,7 +143,8 @@ class Game():
             attack = self.agents[p].choose_attack(attack_outcomes)
             if attack is not None:
                 t_orig, t_dest = attack
-                self.resolve_battle(p, self.world.get_owner(t_dest), t_orig, t_dest)
+                self.resolve_battle(p, self.world.get_owner(t_dest),
+                                    t_orig, t_dest)
 
             # Fortification phase
             t_orig, t_dest, n = self.agents[p].choose_fortify()
