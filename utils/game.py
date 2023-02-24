@@ -151,7 +151,10 @@ class Game():
             self.world.fortify(p, t_orig, t_dest, n)
 
         # Check if game is over
-        pass
+        player_troops = np.sum(self.presence_map,axis=1)
+        player_remaining = np.count_nonzero(player_troops)
+        if player_remaining == 1:
+            self.game_over = True
 
     def run(self):
         """Runs the game until it is over"""
