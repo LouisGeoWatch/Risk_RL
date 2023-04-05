@@ -3,22 +3,25 @@
 
 class Agent():
     def __init__(self):
+        self.Q_deploy = None
+        self.Q_attack = None
+        self.Q_fortify = None
+
+    def choose_deploy(self, reinforcements, world):
+        """Returns the territories to deploy troops on"""
+
         pass
 
-    def choose_deploy(self):
-        """Returns the territory to deploy troops on"""
-        pass
-
-    def choose_attack(self):
+    def choose_attack(self, attack_outcomes, world):
         """Returns the territory to attack"""
         pass
 
-    def choose_conquest(self):
+    def choose_conquest(self, world):
         """Returns the number of troops transfered
            to the conquered territory"""
         pass
 
-    def choose_fortify(self):
+    def choose_fortify(self, world):
         """Returns the territory to fortify at the end of the turn"""
         pass
 
