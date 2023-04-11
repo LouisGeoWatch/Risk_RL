@@ -50,6 +50,13 @@ class World():
 
         return list(set(target_list))
 
+    def get_available_fortifications(self, p):
+        """Returns the possible fortifications of player p
+           (territories with more than 1 troop)"""
+        return [(t, a) for t in self.get_territories(p)
+                for a in self.get_neighbors(t)
+                if self.get_owner(a) == p and self.presence_map[p][t] > 1]
+
     def get_available_target_pairs(self, p):
         """Returns the possible attack targets of player p
             as a list of edges"""
@@ -60,12 +67,6 @@ class World():
             target_list += self.get_t_neighbors_pairs(t)
 
         return target_list
-
-    def get_available_fortifications(self, p, t):
-        """Returns the possible fortifications of player p
-            from territory t as a list of edges"""
-        return [(t, a) for a in self.get_neighbors(t)
-                if self.get_owner(a) == p]
 
     def get_reinforcements(self, p):
         """Returns the number of reinforcements

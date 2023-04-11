@@ -104,7 +104,6 @@ class Game():
             # Mobilization phase
             reinforcements = self.world.get_reinforcements(p)
             t, n = self.agents[p].choose_deploy(reinforcements, self.world)
-            # loop over the list of tuples
             self.world.deploy(p, t, n)
 
             # Attack phase
@@ -162,7 +161,8 @@ class Game():
                 if p == 0:
                     # Mobilization phase
                     reinforcements = self.world.get_reinforcements(p)
-                    t, n, deploy_log_prob = self.agents[p].choose_deploy_prob(reinforcements, self.world)
+                    t, n, deploy_log_prob = self.agents[p].choose_deploy_prob(reinforcements,
+                                                                              self.world)
 
                     # Make a copy of the world
                     world_copy = copy.deepcopy(self.world)
@@ -175,7 +175,8 @@ class Game():
 
                     # Attack phase
                     attack_outcomes = self.attack_outcomes(p)
-                    attack, attack_log_prob = self.agents[p].choose_deploy_prob(attack_outcomes, self.world)
+                    attack, attack_log_prob = self.agents[p].choose_attack_prob(attack_outcomes,
+                                                                                self.world)
                     attack_reward = 0
 
                     if attack is not None:
@@ -191,7 +192,9 @@ class Game():
                     attack_log_probs.append(attack_log_prob)
 
                     # Fortification phase
-                    t_orig, t_dest, n, fortify_log_prob = self.agents[p].choose_deploy_prob(self.world)
+                    available_fortifications = self.world.get_available_fortifications(p)
+                    t_orig, t_dest, n, fortify_log_prob = self.agents[p].choose_fortify_prob(available_fortifications,
+                                                                                             self.world)
                     # Make a copy of the world
                     world_copy = copy.deepcopy(self.world)
                     self.world.fortify(p, t_orig, t_dest, n)
