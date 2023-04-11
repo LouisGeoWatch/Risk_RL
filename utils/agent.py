@@ -1,7 +1,7 @@
 # import numpy as np
 
 
-class Agent():
+class PolicyGradientAgent():
     def __init__(self):
         self.Q_deploy = None
         self.Q_attack = None
@@ -9,7 +9,6 @@ class Agent():
 
     def choose_deploy(self, reinforcements, world):
         """Returns the territories to deploy troops on"""
-
         pass
 
     def choose_attack(self, attack_outcomes, world):

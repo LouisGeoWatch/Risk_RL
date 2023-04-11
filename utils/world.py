@@ -72,3 +72,15 @@ class World():
             based on the number ot territories
             controlled by player p"""
         return 3*len(self.get_territories(p))
+
+    def get_deploy_reward(self, previous_world, p, t, n):
+        """Returns the reward for deploying n troops on territory t"""
+        return 0
+
+    def get_attack_reward(self, previous_world, p, t_orig, t_dest):
+        """Returns the reward for attacking territory t"""
+        return 0
+
+    def get_fortify_reward(self, previous_world, p, t_orig, t_dest, n):
+        """Returns the reward for fortifying territory t"""
+        return 0

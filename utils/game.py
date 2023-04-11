@@ -1,4 +1,5 @@
 import numpy as np
+import copy
 from utils.world import World
 from utils.agent import Agent
 from utils.viz import draw_graph
@@ -55,7 +56,7 @@ class Game():
         self.presence_map = presence_map
         self.players = nb_player
         self.proba_table = proba_table
-        self.turn = 0
+        self.cur_turn = 0
         self.phase = 0
         self.game_over = False
         self.countries = countries
@@ -63,6 +64,10 @@ class Game():
 
         self.world = World(self.map_graph, self.presence_map, self.players)
         self.agents = {i: Agent() for i in range(self.players)}
+
+    def reset_world(self):
+        """Resets the world to its initial state"""
+        self.world = World(self.map_graph, self.presence_map, self.players)
 
     def attack_outcomes(self, p):
         """Returns a list of possible attacks for player p
@@ -133,3 +138,88 @@ class Game():
         colors = [self.colors[i] for i in owners]
 
         draw_graph(self.map_graph, colors, labels)
+
+    def run_REINFORCE(self, max_turns=1000):
+        """Runs the game and apply the REINFORCE algorithm
+           to the agent 0"""
+        self.reset_world()
+        self.cur_turn = 0
+        self.phase = 0
+        self.game_over = False
+
+        deploy_log_probs = []
+        attack_log_probs = []
+        fortify_log_probs = []
+
+        deploy_rewards = []
+        attack_rewards = []
+        fortify_rewards = []
+
+        while not self.game_over() and self.cur_turn < max_turns:
+            for p in range(self.players):
+
+                # Learning agent
+                if p == 0:
+                    # Mobilization phase
+                    reinforcements = self.world.get_reinforcements(p)
+                    t, n, deploy_log_prob = self.agents[p].choose_deploy_prob(reinforcements, self.world)
+
+                    # Make a copy of the world
+                    world_copy = copy.deepcopy(self.world)
+                    self.world.deploy(p, t, n)
+                    deploy_reward = self.world.get_deploy_reward(world_copy, p, t, n)
+
+                    # Save rewards and log probs
+                    deploy_rewards.append(deploy_reward)
+                    deploy_log_probs.append(deploy_log_prob)
+
+                    # Attack phase
+                    attack_outcomes = self.attack_outcomes(p)
+                    attack, attack_log_prob = self.agents[p].choose_deploy_prob(attack_outcomes, self.world)
+                    attack_reward = 0
+
+                    if attack is not None:
+                        # Make a copy of the world
+                        world_copy = copy.deepcopy(self.world)
+                        t_orig, t_dest = attack
+                        self.resolve_battle(p, self.world.get_owner(t_dest),
+                                            t_orig, t_dest)
+                        attack_reward = self.world.get_attack_reward(world_copy, p, t_orig, t_dest)
+
+                    # Save rewards and log probs
+                    attack_rewards.append(attack_reward)
+                    attack_log_probs.append(attack_log_prob)
+
+                    # Fortification phase
+                    t_orig, t_dest, n, fortify_log_prob = self.agents[p].choose_deploy_prob(self.world)
+                    # Make a copy of the world
+                    world_copy = copy.deepcopy(self.world)
+                    self.world.fortify(p, t_orig, t_dest, n)
+                    fortify_reward = self.world.get_fortify_reward(world_copy, p, t_orig, t_dest, n)
+
+                    # Save rewards and log probs
+                    fortify_rewards.append(fortify_reward)
+                    fortify_log_probs.append(fortify_log_prob)
+
+                # Other agents
+                else:
+                    # Mobilization phase
+                    reinforcements = self.world.get_reinforcements(p)
+                    t, n = self.agents[p].choose_deploy(reinforcements, self.world)
+                    self.world.deploy(p, t, n)
+
+                    # Attack phase
+                    attack_outcomes = self.attack_outcomes(p)
+                    attack = self.agents[p].choose_attack(attack_outcomes, self.world)
+                    if attack is not None:
+                        t_orig, t_dest = attack
+                        self.resolve_battle(p, self.world.get_owner(t_dest),
+                                            t_orig, t_dest)
+
+                    # Fortification phase
+                    t_orig, t_dest, n = self.agents[p].choose_fortify(self.world)
+                    self.world.fortify(p, t_orig, t_dest, n)
+
+        # Update the agent at the end of the game
+        self.agents[0].update(deploy_rewards, attack_rewards, fortify_rewards,
+                              deploy_log_probs, attack_log_probs, fortify_log_probs)
