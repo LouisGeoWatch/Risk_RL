@@ -3,8 +3,8 @@ import numpy as np
 
 class World():
     def __init__(self, map_graph, presence_map, nb_players):
-        self.map_graph = map_graph
-        self.presence_map = presence_map
+        self.map_graph = map_graph.copy()
+        self.presence_map = presence_map.copy()
         self.nb_players = nb_players
 
     def get_territories(self, p):
@@ -46,7 +46,8 @@ class World():
         target_list = []
 
         for t in t_list:
-            target_list += self.get_neighbors(t)
+            if self.presence_map[p][t] > 1:
+                target_list += [e for e in self.get_t_neighbors_pairs(t) if e[1] not in t_list]
 
         return list(set(target_list))
 

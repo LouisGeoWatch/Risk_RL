@@ -51,10 +51,12 @@ colors = {0: 'red', 1: 'blue', 2: 'green', 3: 'yellow',
 
 
 class Game():
-    def __init__(self):
-        self.map_graph = map_graph
-        self.presence_map = presence_map
-        self.players = nb_player
+    def __init__(self, map_graph=map_graph, presence_map=presence_map,
+                 nb_players=nb_player, proba_table=proba_table,
+                 countries=countries, colors=colors):
+        self.map_graph = map_graph.copy()
+        self.presence_map = presence_map.copy()
+        self.players = nb_players
         self.proba_table = proba_table
         self.cur_turn = 0
         self.phase = 0
@@ -75,27 +77,30 @@ class Game():
         target_pairs = self.world.get_available_target_pairs(p)
 
         return [(
-                 (t, self.presence_map[p][t]),
-                 (a, self.presence_map[self.world.get_owner(a)][a]),
-                 proba_table[self.presence_map[p][t]]
-                            [self.presence_map[self.world.get_owner(a)][a]]
+                 (t, self.world.presence_map[p][t]),
+                 (a, self.world.presence_map[self.world.get_owner(a)][a]),
+                 proba_table[self.world.presence_map[p][t]]
+                            [self.world.presence_map[self.world.get_owner(a)][a]]
                  )
                 for (t, a) in target_pairs]
 
     def resolve_battle(self, player1, player2, t_orig, t_dest):
         """Updates the presence map according to the battle outcome"""
-        troop1 = min(self.presence_map[player1][t_orig], 7)
-        troop2 = min(self.presence_map[player2][t_dest], 7)
+        troop1 = min(self.world.presence_map[player1][t_orig], 7)
+        troop2 = min(self.world.presence_map[player2][t_dest], 7)
         proba = self.proba_table[troop1, troop2]/100
         rng = np.random.random()
 
         if rng <= proba:
-            self.presence_map[player2, t_dest] = 0
-            n = self.agents[player1].choose_conquest(t_orig, t_dest)
-            self.presence_map[player1, t_dest] = n
-            self.presence_map[player1, t_orig] -= n
+            print("Battle won!")
+            self.world.presence_map[player2, t_dest] = 0
+            # n = self.agents[player1].choose_conquest(t_orig, t_dest)
+            n = troop1 - 1
+            self.world.presence_map[player1, t_dest] = n
+            self.world.presence_map[player1, t_orig] -= n
         else:
-            self.presence_map[player1, t_orig] = 1
+            print("Battle lost!")
+            self.world.presence_map[player1, t_orig] = 1
 
     def turn(self):
         """Runs a turn of the game"""
@@ -119,7 +124,7 @@ class Game():
             self.world.fortify(p, t_orig, t_dest, n)
 
         # Check if game is over
-        player_troops = np.sum(self.presence_map, axis=1)
+        player_troops = np.sum(self.world.presence_map, axis=1)
         player_remaining = np.count_nonzero(player_troops)
         if player_remaining == 1:
             self.game_over = True
@@ -131,9 +136,9 @@ class Game():
 
     def visualize(self):
         """Visualizes the game with networkx package"""
-        labels = {i: f"{i}: {self.countries[i]} ({self.presence_map[0, i]})"
+        labels = {i: f"{i}: {self.countries[i]} ({self.world.presence_map[0, i]})"
                   for i in range(self.map_graph.shape[0])}
-        owners = np.argmax(self.presence_map, axis=0)
+        owners = np.argmax(self.world.presence_map, axis=0)
         colors = [self.colors[i] for i in owners]
 
         draw_graph(self.map_graph, colors, labels)
