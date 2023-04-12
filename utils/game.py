@@ -1,7 +1,7 @@
 import numpy as np
 import copy
 from utils.world import World
-from utils.agent import Agent
+from utils.agent import PolicyGradientAgent
 from utils.viz import draw_graph
 
 # World Map
@@ -63,7 +63,7 @@ class Game():
         self.colors = colors
 
         self.world = World(self.map_graph, self.presence_map, self.players)
-        self.agents = {i: Agent() for i in range(self.players)}
+        self.agents = {i: PolicyGradientAgent() for i in range(self.players)}
 
     def reset_world(self):
         """Resets the world to its initial state"""
