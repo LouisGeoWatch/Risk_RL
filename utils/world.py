@@ -17,11 +17,11 @@ class World():
         """Deploys n troops for player p on territory t"""
         self.presence_map[p][t] += n
 
-    def fortify(self, p, t_orig, t_dest, n):
+    def fortify(self, p, t_orig, t_dest):
         """Relocates n troops of player p
             from territory t_orig to territory t_dest"""
-        self.presence_map[p, t_orig] -= n
-        self.presence_map[p, t_dest] += n
+        self.presence_map[p, t_dest] += self.presence_map[p, t_orig] - 1
+        self.presence_map[p, t_orig] = 1
 
     def get_owner(self, t):
         """Returns the player p owning the territory t"""
@@ -58,16 +58,16 @@ class World():
                 for a in self.get_neighbors(t)
                 if self.get_owner(a) == p and self.presence_map[p][t] > 1]
 
-    def get_available_target_pairs(self, p):
-        """Returns the possible attack targets of player p
-            as a list of edges"""
-        t_list = self.get_territories(p)
-        target_list = []
+    # def get_available_target_pairs(self, p):
+    #     """Returns the possible attack targets of player p
+    #         as a list of edges"""
+    #     t_list = self.get_territories(p)
+    #     target_list = []
 
-        for t in t_list:
-            target_list += self.get_t_neighbors_pairs(t)
+    #     for t in t_list:
+    #         target_list += self.get_t_neighbors_pairs(t)
 
-        return target_list
+    #     return target_list
 
     def get_reinforcements(self, p):
         """Returns the number of reinforcements
@@ -75,14 +75,40 @@ class World():
             controlled by player p"""
         return 3*len(self.get_territories(p))
 
-    def get_deploy_reward(self, previous_world, p, t, n):
+    def get_player_presence_map(self, p):
+        """Returns the presence map of player p
+            which is its troop being positive
+            and the troop of the other players being negative"""
+        ennemy_players = [i for i in range(self.nb_players) if i != p]
+
+        return self.presence_map[p] - np.sum(self.presence_map[ennemy_players], axis=0)
+
+    def get_world_evolution(self, previous_world):
+        """Returns the evolution of the world
+            between the old world and the current world"""
+        return self.presence_map - previous_world.presence_map
+
+    def get_world_evolution_player(self, previous_world, p):
+        """Returns the evolution of the world
+            between the old world and the current world
+            for player p"""
+        previous_presence_map = previous_world.get_player_presence_map(p)
+        new_presence_map = self.get_player_presence_map(p)
+
+        return new_presence_map - previous_presence_map
+
+    def get_deploy_reward(self, previous_world, p):
         """Returns the reward for deploying n troops on territory t"""
-        return 0
+        return 1
 
-    def get_attack_reward(self, previous_world, p, t_orig, t_dest):
+    def get_attack_reward(self, previous_world, p):
         """Returns the reward for attacking territory t"""
-        return 0
+        world_evolution_p = self.get_world_evolution_player(previous_world, p)
+        territory_gains = np.sum(world_evolution_p[world_evolution_p > 0])
+        troops_losses = np.sum(world_evolution_p)
 
-    def get_fortify_reward(self, previous_world, p, t_orig, t_dest, n):
+        return territory_gains - 0.1*troops_losses
+
+    def get_fortify_reward(self, previous_world, p):
         """Returns the reward for fortifying territory t"""
-        return 0
+        return 1

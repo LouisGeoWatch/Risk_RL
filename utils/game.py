@@ -71,19 +71,6 @@ class Game():
         """Resets the world to its initial state"""
         self.world = World(self.map_graph, self.presence_map, self.players)
 
-    def attack_outcomes(self, p):
-        """Returns a list of possible attacks for player p
-            and their possible winning outcome"""
-        target_pairs = self.world.get_available_target_pairs(p)
-
-        return [(
-                 (t, self.world.presence_map[p][t]),
-                 (a, self.world.presence_map[self.world.get_owner(a)][a]),
-                 proba_table[self.world.presence_map[p][t]]
-                            [self.world.presence_map[self.world.get_owner(a)][a]]
-                 )
-                for (t, a) in target_pairs]
-
     def resolve_battle(self, player1, player2, t_orig, t_dest):
         """Updates the presence map according to the battle outcome"""
         troop1 = min(self.world.presence_map[player1][t_orig], 7)
@@ -94,7 +81,6 @@ class Game():
         if rng <= proba:
             print("Battle won!")
             self.world.presence_map[player2, t_dest] = 0
-            # n = self.agents[player1].choose_conquest(t_orig, t_dest)
             n = troop1 - 1
             self.world.presence_map[player1, t_dest] = n
             self.world.presence_map[player1, t_orig] -= n
@@ -112,8 +98,8 @@ class Game():
             self.world.deploy(p, t, n)
 
             # Attack phase
-            attack_outcomes = self.attack_outcomes(p)
-            attack = self.agents[p].choose_attack(attack_outcomes, self.world)
+            available_attacks = self.world.get_available_targets(p)
+            attack = self.agents[p].choose_attack(available_attacks, self.world)
             if attack is not None:
                 t_orig, t_dest = attack
                 self.resolve_battle(p, self.world.get_owner(t_dest),
@@ -165,45 +151,57 @@ class Game():
                 # Learning agent
                 if p == 0:
                     # Mobilization phase
+                    player_presence_map = self.world.get_player_presence_map(p)
                     reinforcements = self.world.get_reinforcements(p)
-                    t, n, deploy_log_prob = self.agents[p].choose_deploy_prob(reinforcements,
-                                                                              self.world)
+                    t, deploy_log_prob = self.agents[p].choose_deploy_prob(reinforcements,
+                                                                           player_presence_map)
 
-                    # Make a copy of the world
+                    # Make a copy of the world and deploy
                     world_copy = copy.deepcopy(self.world)
-                    self.world.deploy(p, t, n)
-                    deploy_reward = self.world.get_deploy_reward(world_copy, p, t, n)
+                    self.world.deploy(p, t, reinforcements)
+
+                    # Get deploy reward
+                    deploy_reward = self.world.get_deploy_reward(world_copy, p)
 
                     # Save rewards and log probs
                     deploy_rewards.append(deploy_reward)
                     deploy_log_probs.append(deploy_log_prob)
 
                     # Attack phase
-                    attack_outcomes = self.attack_outcomes(p)
-                    attack, attack_log_prob = self.agents[p].choose_attack_prob(attack_outcomes,
-                                                                                self.world)
-                    attack_reward = 0
+                    player_presence_map = self.world.get_player_presence_map(p)
+                    available_attacks = self.world.get_available_targets(p)
+                    attack_log_prob = 0
 
-                    if attack is not None:
-                        # Make a copy of the world
+                    if len(available_attacks) > 0:
+                        t_orig, t_dest, attack_log_prob = self.agents[p].choose_attack_prob(available_attacks,
+                                                                                            player_presence_map)
+
+                        # Make a copy of the world and attack
                         world_copy = copy.deepcopy(self.world)
-                        t_orig, t_dest = attack
                         self.resolve_battle(p, self.world.get_owner(t_dest),
                                             t_orig, t_dest)
-                        attack_reward = self.world.get_attack_reward(world_copy, p, t_orig, t_dest)
+
+                    # Get attack reward
+                    attack_reward = self.world.get_attack_reward(world_copy, p)
 
                     # Save rewards and log probs
                     attack_rewards.append(attack_reward)
                     attack_log_probs.append(attack_log_prob)
 
                     # Fortification phase
-                    available_fortifications = self.world.get_available_fortifications(p)
-                    t_orig, t_dest, n, fortify_log_prob = self.agents[p].choose_fortify_prob(available_fortifications,
-                                                                                             self.world)
-                    # Make a copy of the world
-                    world_copy = copy.deepcopy(self.world)
-                    self.world.fortify(p, t_orig, t_dest, n)
-                    fortify_reward = self.world.get_fortify_reward(world_copy, p, t_orig, t_dest, n)
+                    player_presence_map = self.world.get_player_presence_map(p)
+                    fortifications = self.world.get_available_fortifications(p)
+                    fortify_log_prob = 0
+
+                    if len(fortifications) > 0:
+                        t_orig, t_dest, fortify_log_prob = self.agents[p].choose_fortify_prob(fortifications,
+                                                                                              player_presence_map)
+                        # Make a copy of the world and fortify
+                        world_copy = copy.deepcopy(self.world)
+                        self.world.fortify(p, t_orig, t_dest)
+
+                    # Get fortify reward
+                    fortify_reward = self.world.get_fortify_reward(world_copy, p)
 
                     # Save rewards and log probs
                     fortify_rewards.append(fortify_reward)
@@ -212,21 +210,27 @@ class Game():
                 # Other agents
                 else:
                     # Mobilization phase
+                    player_presence_map = self.world.get_player_presence_map(p)
                     reinforcements = self.world.get_reinforcements(p)
-                    t, n = self.agents[p].choose_deploy(reinforcements, self.world)
-                    self.world.deploy(p, t, n)
+                    t = self.agents[p].choose_deploy(reinforcements, player_presence_map)
+                    self.world.deploy(p, t, reinforcements)
 
                     # Attack phase
-                    attack_outcomes = self.attack_outcomes(p)
-                    attack = self.agents[p].choose_attack(attack_outcomes, self.world)
-                    if attack is not None:
-                        t_orig, t_dest = attack
+                    player_presence_map = self.world.get_player_presence_map(p)
+                    attacks = self.world.get_available_targets(p)
+
+                    if len(attacks) > 0:
+                        t_orig, t_dest = self.agents[p].choose_attack(attacks, player_presence_map)
                         self.resolve_battle(p, self.world.get_owner(t_dest),
                                             t_orig, t_dest)
 
                     # Fortification phase
-                    t_orig, t_dest, n = self.agents[p].choose_fortify(self.world)
-                    self.world.fortify(p, t_orig, t_dest, n)
+                    player_presence_map = self.world.get_player_presence_map(p)
+                    fortifications = self.world.get_available_fortifications(p)
+
+                    if len(fortifications) > 0:
+                        t_orig, t_dest = self.agents[p].choose_fortify(fortifications, player_presence_map)
+                        self.world.fortify(p, t_orig, t_dest)
 
         # Update the agent at the end of the game
         self.agents[0].update(deploy_rewards, attack_rewards, fortify_rewards,
