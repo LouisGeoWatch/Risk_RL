@@ -196,15 +196,26 @@ class NaiveAgent():
         pass
 
 
-class Human_player():
-    def __init__(self):
-        pass
+class RandomAgent():
+    def __init__(self, nb_territories=6):
+        self.nb_territories = nb_territories
 
-    def choose_deploy(self):
-        pass
+    def choose_deploy(self, reinforcements, player_presence_map):
+        """Returns the territories to deploy troops on"""
+        # Find the positive values in the presence map np array
+        possible_actions = (player_presence_map > 0)
+        # Find the indices of the positive values
+        possible_actions = np.where(possible_actions)[0]
+        # Take a random possible action
+        return np.random.choice(possible_actions)
 
-    def choose_attack(self):
-        pass
+    def choose_attack(self, attacks, player_presence_map):
+        """Returns the territory to attack"""
+        return attacks[np.random.randint(len(attacks))]
 
-    def choose_fortify(self):
+    def choose_fortify(self, fortifications, player_presence_map):
+        """Returns the territory to fortify at the end of the turn"""
+        return fortifications[np.random.randint(len(fortifications))]
+
+    def update(self, rewards, log_probs, values):
         pass

@@ -58,17 +58,6 @@ class World():
                 for a in self.get_neighbors(t)
                 if self.get_owner(a) == p and self.presence_map[p][t] > 1]
 
-    # def get_available_target_pairs(self, p):
-    #     """Returns the possible attack targets of player p
-    #         as a list of edges"""
-    #     t_list = self.get_territories(p)
-    #     target_list = []
-
-    #     for t in t_list:
-    #         target_list += self.get_t_neighbors_pairs(t)
-
-    #     return target_list
-
     def get_reinforcements(self, p):
         """Returns the number of reinforcements
             based on the number ot territories
