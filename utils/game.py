@@ -39,16 +39,27 @@ presence_map = np.array([
 ])
 
 # Probabilities of winning
-proba_table = np.array([
-    [0, 0, 0, 0, 0, 0, 0, 0],
-    [42, 11, 3, 1, 0, 0, 0, 0],
-    [75, 36, 20, 9, 5, 2, 1, 0],
-    [92, 65, 47, 31, 21, 14, 8, 5],
-    [97, 78, 64, 47, 36, 25, 18, 12],
-    [99, 89, 77, 64, 50, 40, 29, 22],
-    [100, 93, 86, 75, 64, 52, 42, 33],
-    [100, 97, 91, 83, 74, 64, 53, 45]
-])
+def pb_table(N = 50):
+    dp = [[0.]*(N+1) for _ in range(N+1)] # (i, j) = defender with i armies, attacker with j armies
+    dp[0][1:] = [1.]*N
+    for i in range(1, N+1):
+        for j in range(1, N+1):
+            if i == 1:
+                if j == 1:
+                    dp[i][j] = 15/36 * dp[i-1][j] + 21/36 * dp[i][j-1]
+                elif j == 2:
+                    dp[i][j] = 125/216 * dp[i-1][j] + 91/216 * dp[i][j-1]
+                else:
+                    dp[i][j] = 855/1296 * dp[i-1][j] + 441/1296 * dp[i][j-1]
+            else:
+                if j == 1:
+                    dp[i][j] = 55/216 * dp[i-1][j] + 161/216 * dp[i][j-1]
+                elif j == 2:
+                    dp[i][j] = 295/1296 * dp[i-2][j] + 420/1296 * dp[i-1][j-1] + 581/1296 * dp[i][j-2]
+                else:
+                    dp[i][j] = 2890/7776 * dp[i-2][j] + 2611/7776 * dp[i-1][j-1] + 2275/7776 * dp[i][j-2]
+
+proba_table = np.array(pb_table())
 
 colors = {0: 'red', 1: 'blue', 2: 'green', 3: 'yellow',
           4: 'purple', 5: 'orange', 6: 'black', 7: 'white'}
@@ -75,10 +86,10 @@ class Game():
         """Resets the world to its initial state"""
         self.world = World(self.map_graph, self.presence_map, self.players)
 
-    def resolve_battle(self, player1, player2, t_orig, t_dest):
+    def resolve_battle(self, player1, player2, t_orig, t_dest, N = 50):
         """Updates the presence map according to the battle outcome"""
-        troop1 = min(self.world.presence_map[player1][t_orig], 7)
-        troop2 = min(self.world.presence_map[player2][t_dest], 7)
+        troop1 = min(self.world.presence_map[player1][t_orig], N)
+        troop2 = min(self.world.presence_map[player2][t_dest], N)
         proba = self.proba_table[troop1, troop2]/100
         rng = np.random.random()
 
