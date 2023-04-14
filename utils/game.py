@@ -372,3 +372,41 @@ class Game():
                         self.agents[0].fortify_optimizer.zero_grad()
                         fortify_policy_loss.backward()
                         self.agents[0].fortify_optimizer.step()
+
+    def eval_REINFORCE(self, num_games=10, max_turns=100, disp_tqdm=True):
+        """Evaluates the agent using the REINFORCE algorithm
+           for a given number of games and a maximum number
+           of turns per game"""
+
+        deploy_rewards_deque = deque(maxlen=num_games)
+        attack_rewards_deque = deque(maxlen=num_games)
+        fortify_rewards_deque = deque(maxlen=num_games)
+
+        wins = 0
+        nb_turns = []
+
+        # Iterate over the episodes
+        if disp_tqdm:
+            iterator = tqdm(range(1, num_games + 1), desc="Evaluation")
+        else:
+            iterator = range(1, num_games + 1)
+
+        for game in iterator:
+            (deploy_rewards, attack_rewards, fortify_rewards, _, _, _) = self.run_REINFORCE(max_turns=max_turns)
+
+            # Add a win if player 0 won
+            if len(self.world.get_territories(0)) == len(self.presence_map.shape[1]):
+                wins += 1
+
+            # Add the number of turns
+            nb_turns.append(self.cur_turn)
+
+            if self.cur_turn > 0:
+                # Save the score
+                deploy_rewards_deque.append(sum(deploy_rewards))
+                attack_rewards_deque.append(sum(attack_rewards))
+                fortify_rewards_deque.append(sum(fortify_rewards))
+
+        win_rate = wins / num_games
+
+        return (win_rate, nb_turns, deploy_rewards_deque, attack_rewards_deque, fortify_rewards_deque)

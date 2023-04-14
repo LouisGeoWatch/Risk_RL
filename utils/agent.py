@@ -84,13 +84,17 @@ class AttackFortifyNet(nn.Module):
 
 class PolicyGradientAgent():
     def __init__(self, nb_territories=6,
-                 learning_rate=0.01, gamma=0.99):
+                 learning_rate=0.01, gamma=0.99,
+                 deploy_hidden_size=16, attack_fortify_hidden_size=16):
 
         self.nb_territories = nb_territories
 
-        self.deploy_policy = DeployNet(nb_territories=nb_territories)
-        self.attack_policy = AttackFortifyNet(nb_territories=nb_territories)
-        self.fortify_policy = AttackFortifyNet(nb_territories=nb_territories)
+        self.deploy_policy = DeployNet(nb_territories=nb_territories,
+                                       hidden_size=deploy_hidden_size)
+        self.attack_policy = AttackFortifyNet(nb_territories=nb_territories,
+                                              hidden_size=attack_fortify_hidden_size)
+        self.fortify_policy = AttackFortifyNet(nb_territories=nb_territories,
+                                               hidden_size=attack_fortify_hidden_size)
 
         self.deploy_optimizer = torch.optim.Adam(self.deploy_policy.parameters(), lr=learning_rate)
         self.attack_optimizer = torch.optim.Adam(self.attack_policy.parameters(), lr=learning_rate)
