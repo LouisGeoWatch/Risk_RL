@@ -19,7 +19,7 @@ class AttackFortifyNet(nn.Module):
     def forward(self, possible_actions, player_presence_map):
 
         # Apply a linear layer to the input
-        x = F.relu(self.input_fc(player_presence_map))
+        x = (self.input_fc(player_presence_map))
 
         # Split the output into two vectors (one for t_orig, one for t_dest)
         torig = F.relu(self.torig_fc(x))
@@ -46,7 +46,8 @@ class DeployNet(nn.Module):
         super(DeployNet, self).__init__()
 
         self.input_fc = nn.Linear(nb_territories, hidden_size)
-        self.output_fc = nn.Linear(hidden_size+1, nb_territories)
+        #self.output_fc = nn.Linear(hidden_size+1, nb_territories)
+        self.output_fc = nn.Linear(hidden_size, nb_territories)
 
     def forward(self, reinforcements, player_presence_map):
 
@@ -54,13 +55,13 @@ class DeployNet(nn.Module):
         possible_actions = (player_presence_map > 0)
 
         # Apply a linear layer to the input
-        x = F.relu(self.input_fc(player_presence_map))
+        x = (self.input_fc(player_presence_map))
 
         # Concatenate the reinforcements to the output
-        x = torch.cat((x, reinforcements), dim=0)
+        #x = torch.cat((x, reinforcements), dim=0)
 
         # Apply a linear layer to the output
-        x = F.relu(self.output_fc(x))
+        x = (self.output_fc(x))
 
         # Mask the impossible actions
         x[~possible_actions] = 0
@@ -111,7 +112,7 @@ class PolicyGradientAgent():
 
         # Decode the action into a territory pair
         t_orig = action // self.nb_territories
-        t_dest = action % self.nb_territories
+        t_dest = 1+(action % self.nb_territories)
 
         return t_orig.item(), t_dest.item(), m.log_prob(action)
 
@@ -127,7 +128,7 @@ class PolicyGradientAgent():
 
         # Decode the action into a territory pair
         t_orig = action // self.nb_territories
-        t_dest = action % self.nb_territories
+        t_dest = 1+(action % self.nb_territories)
 
         return t_orig.item(), t_dest.item(), m.log_prob(action)
 
@@ -150,7 +151,7 @@ class PolicyGradientAgent():
 
         # Decode the action into a territory pair
         t_orig = action // self.nb_territories
-        t_dest = action % self.nb_territories
+        t_dest = 1+(action % self.nb_territories)
 
         return t_orig.item(), t_dest.item()
 
@@ -165,7 +166,7 @@ class PolicyGradientAgent():
 
         # Decode the action into a territory pair
         t_orig = action // self.nb_territories
-        t_dest = action % self.nb_territories
+        t_dest = 1+(action % self.nb_territories)
 
         return t_orig.item(), t_dest.item()
 
