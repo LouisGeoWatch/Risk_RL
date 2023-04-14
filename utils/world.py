@@ -107,7 +107,7 @@ class World():
         world_evolution_p = self.get_world_evolution_player(previous_world, p)
         n, t = np.amax(world_evolution_p), np.argmax(world_evolution_p)
 
-        adv_neighbors_troops = self.get_neighboring_opponents(t, p)
+        adv_neighbors_troops = np.array(self.get_neighboring_opponents(t, p))
         nb_adv_territories = len(adv_neighbors_troops)
 
         barbarian_term = np.sum((adv_neighbors_troops)**2)
