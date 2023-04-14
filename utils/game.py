@@ -310,45 +310,45 @@ class Game():
                 fortify_disc_return_t = fortify_returns[0] if len(fortify_returns) > 0 else 0
                 fortify_returns.appendleft(gamma * fortify_disc_return_t + fortify_rewards[t])
 
-        # standardization of the returns is employed to make training more stable
-        eps = np.finfo(np.float32).eps.item()
+            # standardization of the returns is employed to make training more stable
+            eps = np.finfo(np.float32).eps.item()
 
-        deploy_returns = torch.tensor(deploy_returns)
-        deploy_returns = (deploy_returns - deploy_returns.mean()) / (deploy_returns.std() + eps)
+            deploy_returns = torch.tensor(deploy_returns)
+            deploy_returns = (deploy_returns - deploy_returns.mean()) / (deploy_returns.std() + eps)
 
-        attack_returns = torch.tensor(attack_returns)
-        attack_returns = (attack_returns - attack_returns.mean()) / (attack_returns.std() + eps)
+            attack_returns = torch.tensor(attack_returns)
+            attack_returns = (attack_returns - attack_returns.mean()) / (attack_returns.std() + eps)
 
-        fortify_returns = torch.tensor(fortify_returns)
-        fortify_returns = (fortify_returns - fortify_returns.mean()) / (fortify_returns.std() + eps)
+            fortify_returns = torch.tensor(fortify_returns)
+            fortify_returns = (fortify_returns - fortify_returns.mean()) / (fortify_returns.std() + eps)
 
-        # Compute the deploy loss
-        deploy_policy_loss = []
-        for log_prob, disc_return in zip(deploy_log_probs, deploy_returns):
-            deploy_policy_loss.append(-log_prob * disc_return)
-        deploy_policy_loss = torch.cat(deploy_policy_loss).sum()
+            # Compute the deploy loss
+            deploy_policy_loss = []
+            for log_prob, disc_return in zip(deploy_log_probs, deploy_returns):
+                deploy_policy_loss.append(-log_prob * disc_return)
+            deploy_policy_loss = torch.cat(deploy_policy_loss).sum()
 
-        # Compute the attack loss
-        attack_policy_loss = []
-        for log_prob, disc_return in zip(attack_log_probs, attack_returns):
-            attack_policy_loss.append(-log_prob * disc_return)
-        attack_policy_loss = torch.cat(attack_policy_loss).sum()
+            # Compute the attack loss
+            attack_policy_loss = []
+            for log_prob, disc_return in zip(attack_log_probs, attack_returns):
+                attack_policy_loss.append(-log_prob * disc_return)
+            attack_policy_loss = torch.cat(attack_policy_loss).sum()
 
-        # Compute the fortify loss
-        fortify_policy_loss = []
-        for log_prob, disc_return in zip(fortify_log_probs, fortify_returns):
-            fortify_policy_loss.append(-log_prob * disc_return)
-        fortify_policy_loss = torch.cat(fortify_policy_loss).sum()
+            # Compute the fortify loss
+            fortify_policy_loss = []
+            for log_prob, disc_return in zip(fortify_log_probs, fortify_returns):
+                fortify_policy_loss.append(-log_prob * disc_return)
+            fortify_policy_loss = torch.cat(fortify_policy_loss).sum()
 
-        # Gradient descent
-        self.agents[0].deploy_optimizer.zero_grad()
-        deploy_policy_loss.backward()
-        self.agents[0].deploy_optimizer.step()
+            # Gradient descent
+            self.agents[0].deploy_optimizer.zero_grad()
+            deploy_policy_loss.backward()
+            self.agents[0].deploy_optimizer.step()
 
-        self.agents[0].attack_optimizer.zero_grad()
-        attack_policy_loss.backward()
-        self.agents[0].attack_optimizer.step()
+            self.agents[0].attack_optimizer.zero_grad()
+            attack_policy_loss.backward()
+            self.agents[0].attack_optimizer.step()
 
-        self.agents[0].fortify_optimizer.zero_grad()
-        fortify_policy_loss.backward()
-        self.agents[0].fortify_optimizer.step()
+            self.agents[0].fortify_optimizer.zero_grad()
+            fortify_policy_loss.backward()
+            self.agents[0].fortify_optimizer.step()
