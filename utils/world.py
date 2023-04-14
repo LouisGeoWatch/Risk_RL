@@ -12,6 +12,10 @@ class World():
             as a list of vertices"""
         return [i for i in range(self.map_graph.shape[0])
                 if self.presence_map[p][i]]
+    
+    def check_game_over(self):
+        check_vector = np.sum(self.presence_map, axis = 1)
+        return (np.count_nonzero(check_vector) == 1)
 
     def deploy(self, p, t, n):
         """Deploys n troops for player p on territory t"""
@@ -32,6 +36,17 @@ class World():
             as a list of vertices"""
         return [i for i in range(self.map_graph.shape[0])
                 if self.map_graph[t][i]]
+    
+    def get_neighboring_opponents(self, t, p):
+        """Returns the number of p's opponent in the neighboring territories of t
+            as a list of vertices
+            We suppose that p owns t"""
+        opponent_list = []
+
+        available_targets = self.get_available_targets(p)
+        neighboring_opponents = [e[1] for e in available_targets if e[0]==t]
+
+        return [np.amax(self.presence_map[:, tau]) for tau in neighboring_opponents]
 
     def get_t_neighbors_pairs(self, t):
         """Returns all the neighboring territories of t
@@ -87,8 +102,24 @@ class World():
         return new_presence_map - previous_presence_map
 
     def get_deploy_reward(self, previous_world, p):
-        """Returns the reward for deploying n troops on territory t"""
-        return 1
+        """Returns the reward for deploying n troops on territory t using a utility function"""
+
+        delta_presence = self.get_world_evolution_player(previous_world, p)
+        n, t = np.amax(delta_presence), np.argmax(delta_presence)
+
+        adv_neighbors_troops = self.get_neighboring_opponents(t, p)
+        nb_adv_territories = len(adv_neighbors_troops)
+
+        barbarian_term = np.sum(np.exp(adv_neighbors_troops)-1)
+
+        def concave_term(x):
+            if x>0:
+                return np.log(1+x) - x*np.log(x)
+            else:
+                return 0
+        concave_term = concave_term(nb_adv_territories)
+
+        return concave_term + barbarian_term
 
     def get_attack_reward(self, previous_world, p):
         """Returns the reward for attacking territory t"""
