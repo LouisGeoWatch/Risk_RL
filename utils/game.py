@@ -183,6 +183,10 @@ class Game():
 
             for p in range(self.players):
 
+                # Interrupt the game if the first player is out of the game
+                if len(self.world.get_territories(p)) == 0:
+                    break
+
                 # Check if player is still in the game
                 if len(self.world.get_territories(p)) > 0:
 
