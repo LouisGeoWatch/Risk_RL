@@ -11,7 +11,7 @@ from utils.viz import draw_map, draw_map_and_save
 # World Map
 map_graph = np.array([
     [0, 1, 1, 0, 1, 0],
-    [1, 0, 0, 0, 0, 0],
+    [1, 0, 0, 1, 0, 0],
     [1, 0, 0, 1, 1, 0],
     [0, 1, 1, 0, 0, 0],
     [1, 0, 1, 0, 0, 1],
