@@ -104,31 +104,43 @@ class World():
     def get_deploy_reward(self, previous_world, p):
         """Returns the reward for deploying n troops on territory t using a utility function"""
 
-        delta_presence = self.get_world_evolution_player(previous_world, p)
-        n, t = np.amax(delta_presence), np.argmax(delta_presence)
+        world_evolution_p = self.get_world_evolution_player(previous_world, p)
+        n, t = np.amax(world_evolution_p), np.argmax(world_evolution_p)
 
         adv_neighbors_troops = self.get_neighboring_opponents(t, p)
         nb_adv_territories = len(adv_neighbors_troops)
 
-        barbarian_term = np.sum(np.exp(adv_neighbors_troops)-1)
+        barbarian_term = np.sum((adv_neighbors_troops)**2)
 
         def concave_term(x):
             if x>0:
                 return np.log(1+x) - x*np.log(x)
             else:
                 return 0
-        concave_term = concave_term(nb_adv_territories)
+        concave_term = concave_term(n)
 
         return concave_term + barbarian_term
 
-    def get_attack_reward(self, previous_world, p):
+    def get_attack_reward(self, previous_world, p, win_proba):
         """Returns the reward for attacking territory t"""
         world_evolution_p = self.get_world_evolution_player(previous_world, p)
-        territory_gains = np.sum(world_evolution_p[world_evolution_p > 0])
-        troops_losses = np.sum(world_evolution_p)
+        troops_losses = np.sum(world_evolution_p)/np.sum(previous_world.presence_map[p, :])
 
-        return territory_gains - 0.1*troops_losses
+        return win_proba - troops_losses
 
     def get_fortify_reward(self, previous_world, p):
         """Returns the reward for fortifying territory t"""
-        return 1
+        world_evolution_p = self.get_world_evolution_player(previous_world, p)
+
+        #Obtain the number of troops moved and the territories
+        f, t_start, t_end = np.amax(world_evolution_p), np.argmax(world_evolution_p), np.argmin(world_evolution_p)
+
+        neighbors_troops_start = self.get_neighboring_opponents(t_start, p)
+        neighbors_troops_end = self.get_neighboring_opponents(t_end, p)
+
+        hedge_start = np.min([self.presence_map[p, t_start] - x for x in neighbors_troops_start])
+        hedge_end = np.min([self.presence_map[p, t_end] - x for x in neighbors_troops_end])
+
+        delta_hedging = hedge_start+hedge_end
+
+        return (f*delta_hedging if delta_hedging <= 0 else delta_hedging)
