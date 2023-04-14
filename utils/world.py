@@ -106,16 +106,14 @@ class World():
         n, t = np.amax(world_evolution_p), np.argmax(world_evolution_p)
 
         adv_neighbors_troops = np.array(self.get_neighboring_opponents(t, p))
-        # nb_adv_territories = len(adv_neighbors_troops)
 
         barbarian_term = np.sum((adv_neighbors_troops)**2)
 
-        def concave_term(x):
-            if x > 0:
-                return np.log(1+x) - x*np.log(x)
-            else:
-                return 0
-        concave_term = concave_term(n)
+        # Concave term
+        if n > 0:
+            concave_term = np.log(1+n) - n*np.log(n)
+        else:
+            concave_term = 0
 
         return concave_term + barbarian_term
 

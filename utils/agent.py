@@ -118,7 +118,6 @@ class PolicyGradientAgent():
 
         # Output of the attack policy
         attack_log_prob = self.attack_policy(attacks, player_presence_map)
-
         # Sample an action
         m = Categorical(attack_log_prob)
         action = m.sample()
@@ -134,7 +133,6 @@ class PolicyGradientAgent():
 
         # Output of the fortify policy
         fortify_log_prob = self.fortify_policy(possible_fortifications, player_presence_map)
-
         # Sample an action
         m = Categorical(fortify_log_prob)
         action = m.sample()
@@ -149,7 +147,7 @@ class PolicyGradientAgent():
         """The greedy version of choose_deploy_prob"""
 
         output = self.deploy_policy(reinforcements, player_presence_map)
-        probs = F.softmax(output, dim=0).cpu()
+        probs = F.softmax(output, dim=1).cpu()
 
         return torch.argmax(probs).item()
 
@@ -158,7 +156,6 @@ class PolicyGradientAgent():
 
         # Output of the attack policy
         attack_log_prob = self.attack_policy(attacks, player_presence_map)
-
         # Take the action with the highest probability
         action = torch.argmax(attack_log_prob)
 
@@ -173,7 +170,6 @@ class PolicyGradientAgent():
 
         # Output of the fortify policy
         fortify_log_prob = self.fortify_policy(fortifications, player_presence_map)
-
         # Take the action with the highest probability
         action = torch.argmax(fortify_log_prob)
 

@@ -38,9 +38,10 @@ presence_map = np.array([
     [0, 0, 0, 0, 2, 2]
 ])
 
+
 # Probabilities of winning
-def pb_table(N = 50):
-    dp = [[0.]*(N+1) for _ in range(N+1)] # (i, j) = defender with i armies, attacker with j armies
+def pb_table(N=50):
+    dp = [[0.]*(N+1) for _ in range(N+1)]  # (i, j) = defender with i armies, attacker with j armies
     dp[0][1:] = [1.]*N
     for i in range(1, N+1):
         for j in range(1, N+1):
@@ -58,8 +59,10 @@ def pb_table(N = 50):
                     dp[i][j] = 295/1296 * dp[i-2][j] + 420/1296 * dp[i-1][j-1] + 581/1296 * dp[i][j-2]
                 else:
                     dp[i][j] = 2890/7776 * dp[i-2][j] + 2611/7776 * dp[i-1][j-1] + 2275/7776 * dp[i][j-2]
+    return dp
 
-proba_table = np.array(pb_table())
+
+proba_table = np.array(pb_table()).T
 
 colors = {0: 'red', 1: 'blue', 2: 'green', 3: 'yellow',
           4: 'purple', 5: 'orange', 6: 'black', 7: 'white'}
@@ -74,7 +77,6 @@ class Game():
         self.players = nb_players
         self.proba_table = proba_table
         self.cur_turn = 0
-        self.phase = 0
         self.game_over = False
         self.countries = countries
         self.colors = colors
@@ -86,21 +88,19 @@ class Game():
         """Resets the world to its initial state"""
         self.world = World(self.map_graph, self.presence_map, self.players)
 
-    def resolve_battle(self, player1, player2, t_orig, t_dest, N = 50):
+    def resolve_battle(self, player1, player2, t_orig, t_dest, N=50):
         """Updates the presence map according to the battle outcome"""
         troop1 = min(self.world.presence_map[player1][t_orig], N)
         troop2 = min(self.world.presence_map[player2][t_dest], N)
-        proba = self.proba_table[troop1, troop2]/100
+        proba = self.proba_table[troop1, troop2]
         rng = np.random.random()
 
         if rng <= proba:
-            # print("Battle won!")
             self.world.presence_map[player2, t_dest] = 0
             n = troop1 - 1
             self.world.presence_map[player1, t_dest] = n
             self.world.presence_map[player1, t_orig] -= n
         else:
-            # print("Battle lost!")
             self.world.presence_map[player1, t_orig] = 1
 
         return proba
@@ -113,13 +113,13 @@ class Game():
             if len(self.world.get_territories(p)) > 0:
 
                 # Mobilization phase
-                player_presence_map = self.world.get_player_presence_map(p)
-                reinforcements = self.world.get_reinforcements(p)
+                player_presence_map = torch.tensor(self.world.get_player_presence_map(p)).float()
+                reinforcements = torch.tensor([self.world.get_reinforcements(p)])
                 t = self.agents[p].choose_deploy(reinforcements, player_presence_map)
                 self.world.deploy(p, t, reinforcements)
 
                 # Attack phase
-                player_presence_map = self.world.get_player_presence_map(p)
+                player_presence_map = torch.tensor(self.world.get_player_presence_map(p)).float()
                 attacks = self.world.get_available_targets(p)
 
                 if len(attacks) > 0:
@@ -128,7 +128,7 @@ class Game():
                                         t_orig, t_dest)
 
                 # Fortification phase
-                player_presence_map = self.world.get_player_presence_map(p)
+                player_presence_map = torch.tensor(self.world.get_player_presence_map(p)).float()
                 fortifications = self.world.get_available_fortifications(p)
 
                 if len(fortifications) > 0:
@@ -144,19 +144,23 @@ class Game():
         draw_map_and_save(self.world.map_graph, self.world.presence_map,
                           title=title, filename=save_path)
 
-    def run(self):
+    def run(self, max_turns=20):
         """Runs the game until it is over"""
         self.reset_world()
+        self.cur_turn = 0
+        self.game_over = False
 
-        while not self.game_over():
+        while not self.game_over and self.cur_turn < max_turns:
+            self.cur_turn += 1
             self.turn()
             # Check if the game is over
             self.game_over = self.world.check_game_over()
 
     def run_and_save(self):
         """Runs the game until it is over and saves the game states"""
-        self.cur_turn = 0
         self.reset_world()
+        self.cur_turn = 0
+        self.game_over = False
 
         while not self.game_over and self.cur_turn < 20:
             # Add a 0 to the turn number if it is less than 10
@@ -178,7 +182,6 @@ class Game():
            to the agent 0"""
         self.reset_world()
         self.cur_turn = 0
-        self.phase = 0
         self.game_over = False
 
         deploy_log_probs = []
@@ -297,6 +300,9 @@ class Game():
            for a given number of games and a maximum number
            of turns per game"""
 
+        if num_games == 0:
+            return None
+
         deploy_rewards_deque = deque(maxlen=num_games)
         attack_rewards_deque = deque(maxlen=num_games)
         fortify_rewards_deque = deque(maxlen=num_games)
@@ -384,16 +390,14 @@ class Game():
                         fortify_policy_loss.backward()
                         self.agents[0].fortify_optimizer.step()
 
-    def eval_REINFORCE(self, num_games=10, max_turns=100, disp_tqdm=True):
+    def eval_REINFORCE(self, num_games=10, max_turns=100, player=0, disp_tqdm=True):
         """Evaluates the agent using the REINFORCE algorithm
            for a given number of games and a maximum number
            of turns per game"""
 
-        deploy_rewards_deque = deque(maxlen=num_games)
-        attack_rewards_deque = deque(maxlen=num_games)
-        fortify_rewards_deque = deque(maxlen=num_games)
-
         wins = 0
+        defeats = 0
+        ties = 0
         nb_turns = []
 
         # Iterate over the episodes
@@ -403,21 +407,21 @@ class Game():
             iterator = range(1, num_games + 1)
 
         for game in iterator:
-            (deploy_rewards, attack_rewards, fortify_rewards, _, _, _) = self.run_REINFORCE(max_turns=max_turns)
+            self.run(max_turns=max_turns)
 
-            # Add a win if player 0 won
-            if len(self.world.get_territories(0)) == len(self.presence_map.shape[1]):
+            # Add a win if player won
+            if len(self.world.get_territories(player)) == self.presence_map.shape[1]:
                 wins += 1
+            elif len(self.world.get_territories(player)) == 0:
+                defeats += 1
+            else:
+                ties += 1
 
             # Add the number of turns
             nb_turns.append(self.cur_turn)
 
-            if self.cur_turn > 0:
-                # Save the score
-                deploy_rewards_deque.append(sum(deploy_rewards))
-                attack_rewards_deque.append(sum(attack_rewards))
-                fortify_rewards_deque.append(sum(fortify_rewards))
-
         win_rate = wins / num_games
+        defeat_rate = defeats / num_games
+        tie_rate = ties / num_games
 
-        return (win_rate, nb_turns, deploy_rewards_deque, attack_rewards_deque, fortify_rewards_deque)
+        return (win_rate, defeat_rate, tie_rate, nb_turns)
