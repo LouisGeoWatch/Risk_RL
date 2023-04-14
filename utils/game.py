@@ -11,8 +11,8 @@ from utils.viz import draw_map, draw_map_and_save
 # World Map
 map_graph = np.array([
     [0, 1, 1, 0, 1, 0],
-    [1, 0, 1, 0, 0, 0],
-    [1, 1, 0, 1, 1, 0],
+    [1, 0, 0, 0, 0, 0],
+    [1, 0, 0, 1, 1, 0],
     [0, 1, 1, 0, 0, 0],
     [1, 0, 1, 0, 0, 1],
     [0, 0, 0, 0, 1, 0]
@@ -83,14 +83,16 @@ class Game():
         rng = np.random.random()
 
         if rng <= proba:
-            print("Battle won!")
+            # print("Battle won!")
             self.world.presence_map[player2, t_dest] = 0
             n = troop1 - 1
             self.world.presence_map[player1, t_dest] = n
             self.world.presence_map[player1, t_orig] -= n
         else:
-            print("Battle lost!")
+            # print("Battle lost!")
             self.world.presence_map[player1, t_orig] = 1
+
+        return proba
 
     def turn(self):
         """Runs a turn of the game"""
@@ -122,12 +124,6 @@ class Game():
                     t_orig, t_dest = self.agents[p].choose_fortify(fortifications, player_presence_map)
                     self.world.fortify(p, t_orig, t_dest)
 
-        # Check if game is over
-        player_troops = np.sum(self.world.presence_map, axis=1)
-        player_remaining = np.count_nonzero(player_troops)
-        if player_remaining == 1:
-            self.game_over = True
-
     def visualize(self):
         """Visualizes the game with networkx package"""
         draw_map(self.world.map_graph, self.world.presence_map)
@@ -139,8 +135,12 @@ class Game():
 
     def run(self):
         """Runs the game until it is over"""
+        self.reset_world()
+
         while not self.game_over():
             self.turn()
+            # Check if the game is over
+            self.game_over = self.world.check_game_over()
 
     def run_and_save(self):
         """Runs the game until it is over and saves the game states"""
@@ -155,6 +155,9 @@ class Game():
                                     save_path="images/turn_{}.png".format(cur_turn_str))
             self.turn()
             self.cur_turn += 1
+
+            # Check if the game is over
+            self.game_over = self.world.check_game_over()
 
         self.visualize_and_save(title="Turn {} (last turn)".format(cur_turn_str),
                                 save_path="images/turn_{}.png".format(cur_turn_str))
@@ -175,7 +178,9 @@ class Game():
         attack_rewards = []
         fortify_rewards = []
 
-        while not self.game_over() and self.cur_turn < max_turns:
+        while not self.game_over and self.cur_turn < max_turns:
+            self.cur_turn += 1
+
             for p in range(self.players):
 
                 # Check if player is still in the game
@@ -184,8 +189,8 @@ class Game():
                     # Learning agent
                     if p == 0:
                         # Mobilization phase
-                        player_presence_map = self.world.get_player_presence_map(p)
-                        reinforcements = self.world.get_reinforcements(p)
+                        player_presence_map = torch.tensor(self.world.get_player_presence_map(p)).float()
+                        reinforcements = torch.tensor([self.world.get_reinforcements(p)])
                         t, deploy_log_prob = self.agents[p].choose_deploy_prob(reinforcements,
                                                                                player_presence_map)
 
@@ -201,7 +206,7 @@ class Game():
                         deploy_log_probs.append(deploy_log_prob)
 
                         # Attack phase
-                        player_presence_map = self.world.get_player_presence_map(p)
+                        player_presence_map = torch.tensor(self.world.get_player_presence_map(p)).float()
                         available_attacks = self.world.get_available_targets(p)
                         attack_log_prob = 0
 
@@ -211,18 +216,18 @@ class Game():
 
                             # Make a copy of the world and attack
                             world_copy = copy.deepcopy(self.world)
-                            self.resolve_battle(p, self.world.get_owner(t_dest),
-                                                t_orig, t_dest)
+                            win_proba = self.resolve_battle(p, self.world.get_owner(t_dest),
+                                                            t_orig, t_dest)
 
                         # Get attack reward
-                        attack_reward = self.world.get_attack_reward(world_copy, p)
+                        attack_reward = self.world.get_attack_reward(world_copy, p, win_proba)
 
                         # Save rewards and log probs
                         attack_rewards.append(attack_reward)
                         attack_log_probs.append(attack_log_prob)
 
                         # Fortification phase
-                        player_presence_map = self.world.get_player_presence_map(p)
+                        player_presence_map = torch.tensor(self.world.get_player_presence_map(p)).float()
                         fortifications = self.world.get_available_fortifications(p)
                         fortify_log_prob = 0
 
@@ -243,13 +248,13 @@ class Game():
                     # Other agents
                     else:
                         # Mobilization phase
-                        player_presence_map = self.world.get_player_presence_map(p)
-                        reinforcements = self.world.get_reinforcements(p)
+                        player_presence_map = torch.tensor(self.world.get_player_presence_map(p)).float()
+                        reinforcements = torch.tensor([self.world.get_reinforcements(p)])
                         t = self.agents[p].choose_deploy(reinforcements, player_presence_map)
                         self.world.deploy(p, t, reinforcements)
 
                         # Attack phase
-                        player_presence_map = self.world.get_player_presence_map(p)
+                        player_presence_map = torch.tensor(self.world.get_player_presence_map(p)).float()
                         attacks = self.world.get_available_targets(p)
 
                         if len(attacks) > 0:
@@ -258,12 +263,15 @@ class Game():
                                                 t_orig, t_dest)
 
                         # Fortification phase
-                        player_presence_map = self.world.get_player_presence_map(p)
+                        player_presence_map = torch.tensor(self.world.get_player_presence_map(p)).float()
                         fortifications = self.world.get_available_fortifications(p)
 
                         if len(fortifications) > 0:
                             t_orig, t_dest = self.agents[p].choose_fortify(fortifications, player_presence_map)
                             self.world.fortify(p, t_orig, t_dest)
+
+                # Check if the game is over
+                self.world.check_game_over()
 
         # Return the monitored values
         return (deploy_rewards, attack_rewards, fortify_rewards,
@@ -326,19 +334,22 @@ class Game():
             deploy_policy_loss = []
             for log_prob, disc_return in zip(deploy_log_probs, deploy_returns):
                 deploy_policy_loss.append(-log_prob * disc_return)
-            deploy_policy_loss = torch.cat(deploy_policy_loss).sum()
+            # deploy_policy_loss = torch.cat(deploy_policy_loss).sum()
+            deploy_policy_loss = torch.tensor(deploy_policy_loss, requires_grad=True).sum()
 
             # Compute the attack loss
             attack_policy_loss = []
             for log_prob, disc_return in zip(attack_log_probs, attack_returns):
                 attack_policy_loss.append(-log_prob * disc_return)
-            attack_policy_loss = torch.cat(attack_policy_loss).sum()
+            # attack_policy_loss = torch.cat(attack_policy_loss).sum()
+            attack_policy_loss = torch.tensor(attack_policy_loss, requires_grad=True).sum()
 
             # Compute the fortify loss
             fortify_policy_loss = []
             for log_prob, disc_return in zip(fortify_log_probs, fortify_returns):
                 fortify_policy_loss.append(-log_prob * disc_return)
-            fortify_policy_loss = torch.cat(fortify_policy_loss).sum()
+            # fortify_policy_loss = torch.cat(fortify_policy_loss).sum()
+            fortify_policy_loss = torch.tensor(fortify_policy_loss, requires_grad=True).sum()
 
             # Gradient descent
             self.agents[0].deploy_optimizer.zero_grad()
