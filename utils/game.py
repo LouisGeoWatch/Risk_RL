@@ -1,5 +1,9 @@
-import numpy as np
 import copy
+from collections import deque
+import numpy as np
+from tqdm import tqdm
+import torch
+
 from utils.world import World
 from utils.agent import PolicyGradientAgent
 from utils.viz import draw_map, draw_map_and_save
@@ -261,6 +265,90 @@ class Game():
                             t_orig, t_dest = self.agents[p].choose_fortify(fortifications, player_presence_map)
                             self.world.fortify(p, t_orig, t_dest)
 
-        # Update the agent at the end of the game
-        self.agents[0].update(deploy_rewards, attack_rewards, fortify_rewards,
-                              deploy_log_probs, attack_log_probs, fortify_log_probs)
+        # Return the monitored values
+        return (deploy_rewards, attack_rewards, fortify_rewards,
+                deploy_log_probs, attack_log_probs, fortify_log_probs)
+
+    def train_REINFORCE(self, num_games=100, max_turns=100, disp_tqdm=True):
+        """Trains the agent using the REINFORCE algorithm
+           for a given number of games and a maximum number
+           of turns per game"""
+
+        deploy_rewards_deque = deque(maxlen=num_games)
+        attack_rewards_deque = deque(maxlen=num_games)
+        fortify_rewards_deque = deque(maxlen=num_games)
+
+        # Iterate over the episodes
+        if disp_tqdm:
+            iterator = tqdm(range(1, num_games + 1), desc="Training")
+        else:
+            iterator = range(1, num_games + 1)
+
+        for game in iterator:
+            (deploy_rewards, attack_rewards, fortify_rewards,
+             deploy_log_probs, attack_log_probs, fortify_log_probs) = self.run_REINFORCE(max_turns=max_turns)
+
+            # Save the score
+            deploy_rewards_deque.append(sum(deploy_rewards))
+            attack_rewards_deque.append(sum(attack_rewards))
+            fortify_rewards_deque.append(sum(fortify_rewards))
+
+            # Calculate the return
+            deploy_returns = deque(maxlen=max_turns)
+            attack_returns = deque(maxlen=max_turns)
+            fortify_returns = deque(maxlen=max_turns)
+            n_steps = len(deploy_rewards)
+            gamma = self.agents[0].gamma
+
+            for t in range(n_steps)[::-1]:
+                deploy_disc_return_t = deploy_returns[0] if len(deploy_returns) > 0 else 0
+                deploy_returns.appendleft(gamma * deploy_disc_return_t + deploy_rewards[t])
+
+                attack_disc_return_t = attack_returns[0] if len(attack_returns) > 0 else 0
+                attack_returns.appendleft(gamma * attack_disc_return_t + attack_rewards[t])
+
+                fortify_disc_return_t = fortify_returns[0] if len(fortify_returns) > 0 else 0
+                fortify_returns.appendleft(gamma * fortify_disc_return_t + fortify_rewards[t])
+
+        # standardization of the returns is employed to make training more stable
+        eps = np.finfo(np.float32).eps.item()
+
+        deploy_returns = torch.tensor(deploy_returns)
+        deploy_returns = (deploy_returns - deploy_returns.mean()) / (deploy_returns.std() + eps)
+
+        attack_returns = torch.tensor(attack_returns)
+        attack_returns = (attack_returns - attack_returns.mean()) / (attack_returns.std() + eps)
+
+        fortify_returns = torch.tensor(fortify_returns)
+        fortify_returns = (fortify_returns - fortify_returns.mean()) / (fortify_returns.std() + eps)
+
+        # Compute the deploy loss
+        deploy_policy_loss = []
+        for log_prob, disc_return in zip(deploy_log_probs, deploy_returns):
+            deploy_policy_loss.append(-log_prob * disc_return)
+        deploy_policy_loss = torch.cat(deploy_policy_loss).sum()
+
+        # Compute the attack loss
+        attack_policy_loss = []
+        for log_prob, disc_return in zip(attack_log_probs, attack_returns):
+            attack_policy_loss.append(-log_prob * disc_return)
+        attack_policy_loss = torch.cat(attack_policy_loss).sum()
+
+        # Compute the fortify loss
+        fortify_policy_loss = []
+        for log_prob, disc_return in zip(fortify_log_probs, fortify_returns):
+            fortify_policy_loss.append(-log_prob * disc_return)
+        fortify_policy_loss = torch.cat(fortify_policy_loss).sum()
+
+        # Gradient descent
+        self.agents[0].deploy_optimizer.zero_grad()
+        deploy_policy_loss.backward()
+        self.agents[0].deploy_optimizer.step()
+
+        self.agents[0].attack_optimizer.zero_grad()
+        attack_policy_loss.backward()
+        self.agents[0].attack_optimizer.step()
+
+        self.agents[0].fortify_optimizer.zero_grad()
+        fortify_policy_loss.backward()
+        self.agents[0].fortify_optimizer.step()
