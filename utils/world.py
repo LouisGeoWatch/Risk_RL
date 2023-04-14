@@ -138,8 +138,14 @@ class World():
         neighbors_troops_start = self.get_neighboring_opponents(t_start, p)
         neighbors_troops_end = self.get_neighboring_opponents(t_end, p)
 
-        hedge_start = np.min([self.presence_map[p, t_start] - x for x in neighbors_troops_start])
-        hedge_end = np.min([self.presence_map[p, t_end] - x for x in neighbors_troops_end])
+        def hedging(neighbors, t):
+            if len(neighbors)>0:
+                return np.min([self.presence_map[p, t] - x for x in neighbors])
+            else:
+                return 0
+
+        hedge_start = hedging(neighbors_troops_start, t_start)
+        hedge_end = hedging(neighbors_troops_end, t_end)
 
         delta_hedging = hedge_start+hedge_end
 
