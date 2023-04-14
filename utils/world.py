@@ -12,9 +12,9 @@ class World():
             as a list of vertices"""
         return [i for i in range(self.map_graph.shape[0])
                 if self.presence_map[p][i]]
-    
+
     def check_game_over(self):
-        check_vector = np.sum(self.presence_map, axis = 1)
+        check_vector = np.sum(self.presence_map, axis=1)
         return (np.count_nonzero(check_vector) == 1)
 
     def deploy(self, p, t, n):
@@ -36,15 +36,13 @@ class World():
             as a list of vertices"""
         return [i for i in range(self.map_graph.shape[0])
                 if self.map_graph[t][i]]
-    
+
     def get_neighboring_opponents(self, t, p):
         """Returns the number of p's opponent in the neighboring territories of t
             as a list of vertices
             We suppose that p owns t"""
-        opponent_list = []
-
         available_targets = self.get_available_targets(p)
-        neighboring_opponents = [e[1] for e in available_targets if e[0]==t]
+        neighboring_opponents = [e[1] for e in available_targets if e[0] == t]
 
         return [np.amax(self.presence_map[:, tau]) for tau in neighboring_opponents]
 
@@ -108,12 +106,12 @@ class World():
         n, t = np.amax(world_evolution_p), np.argmax(world_evolution_p)
 
         adv_neighbors_troops = np.array(self.get_neighboring_opponents(t, p))
-        nb_adv_territories = len(adv_neighbors_troops)
+        # nb_adv_territories = len(adv_neighbors_troops)
 
         barbarian_term = np.sum((adv_neighbors_troops)**2)
 
         def concave_term(x):
-            if x>0:
+            if x > 0:
                 return np.log(1+x) - x*np.log(x)
             else:
                 return 0
@@ -132,14 +130,14 @@ class World():
         """Returns the reward for fortifying territory t"""
         world_evolution_p = self.get_world_evolution_player(previous_world, p)
 
-        #Obtain the number of troops moved and the territories
+        # Obtain the number of troops moved and the territories
         f, t_start, t_end = np.amax(world_evolution_p), np.argmax(world_evolution_p), np.argmin(world_evolution_p)
 
         neighbors_troops_start = self.get_neighboring_opponents(t_start, p)
         neighbors_troops_end = self.get_neighboring_opponents(t_end, p)
 
         def hedging(neighbors, t):
-            if len(neighbors)>0:
+            if len(neighbors) > 0:
                 return np.min([self.presence_map[p, t] - x for x in neighbors])
             else:
                 return 0

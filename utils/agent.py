@@ -21,6 +21,9 @@ class DeployNet(nn.Module):
         # Find the possible actions (territories where the player has a presence)
         possible_actions = (player_presence_map > 0)
 
+        # Unsqueeze the inputs to add a batch dimension
+        reinforcements, player_presence_map = reinforcements.unsqueeze(0), player_presence_map.unsqueeze(0)
+
         # Apply a linear layer to the input
         x = F.tanh(self.input_fc(player_presence_map))
 
@@ -31,10 +34,12 @@ class DeployNet(nn.Module):
         x = F.tanh(self.output_fc(x))
 
         # Mask the impossible actions
-        x[~possible_actions] = -1000
+        mask = torch.zeros_like(x)
+        mask[:, possible_actions] = 1
+        x = torch.where(mask == 1, x, torch.zeros_like(x)-1000)
 
         # Softmax the output
-        actions_prob = F.softmax(x, dim=0)
+        actions_prob = F.softmax(x, dim=1)
 
         return actions_prob
 
@@ -69,8 +74,10 @@ class AttackFortifyNet(nn.Module):
         # Flatten the matrix
         embedding_mat = embedding_mat.flatten()
 
+        embedding_mat = embedding_mat.unsqueeze(0)
+
         # Softmax the output
-        actions_prob = F.softmax(embedding_mat, dim=0)
+        actions_prob = F.softmax(embedding_mat, dim=1)
 
         return actions_prob
 
@@ -96,7 +103,6 @@ class PolicyGradientAgent():
 
         # Output of the deploy policy
         deploy_log_prob = self.deploy_policy(reinforcements, player_presence_map)
-
         # Sample an action
         m = Categorical(deploy_log_prob)
         action = m.sample()
