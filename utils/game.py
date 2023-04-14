@@ -83,13 +83,13 @@ class Game():
         rng = np.random.random()
 
         if rng <= proba:
-            # print("Battle won!")
+            print("Battle won!")
             self.world.presence_map[player2, t_dest] = 0
             n = troop1 - 1
             self.world.presence_map[player1, t_dest] = n
             self.world.presence_map[player1, t_orig] -= n
         else:
-            # print("Battle lost!")
+            print("Battle lost!")
             self.world.presence_map[player1, t_orig] = 1
 
     def turn(self):

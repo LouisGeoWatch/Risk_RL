@@ -8,6 +8,37 @@ import numpy as np
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 
+class DeployNet(nn.Module):
+    def __init__(self, nb_territories=6, hidden_size=16):
+        super(DeployNet, self).__init__()
+
+        self.input_fc = nn.Linear(nb_territories, hidden_size)
+        # self.output_fc = nn.Linear(hidden_size+1, nb_territories)
+        self.output_fc = nn.Linear(hidden_size, nb_territories)
+
+    def forward(self, reinforcements, player_presence_map):
+
+        # Find the possible actions (territories where the player has a presence)
+        possible_actions = (player_presence_map > 0)
+
+        # Apply a linear layer to the input
+        x = F.tanh(self.input_fc(player_presence_map))
+
+        # Concatenate the reinforcements to the output
+        # x = torch.cat((x, reinforcements), dim=0)
+
+        # Apply a linear layer to the output
+        x = F.tanh(self.output_fc(x))
+
+        # Mask the impossible actions
+        x[~possible_actions] = -1000
+
+        # Softmax the output
+        actions_prob = F.softmax(x, dim=0)
+
+        return actions_prob
+
+
 class AttackFortifyNet(nn.Module):
     def __init__(self, nb_territories=6, hidden_size=16):
         super(AttackFortifyNet, self).__init__()
@@ -19,55 +50,27 @@ class AttackFortifyNet(nn.Module):
     def forward(self, possible_actions, player_presence_map):
 
         # Apply a linear layer to the input
-        x = (self.input_fc(player_presence_map))
+        x = F.tanh(self.input_fc(player_presence_map))
 
         # Split the output into two vectors (one for t_orig, one for t_dest)
-        torig = F.relu(self.torig_fc(x))
-        tdest = F.relu(self.tdest_fc(x))
+        torig = F.tanh(self.torig_fc(x))
+        tdest = F.tanh(self.tdest_fc(x))
 
         # Build a matrix of output with a dot product
-        embedding_mat = torch.matmul(torig, tdest.T)
+        embedding_mat = torch.outer(torig, tdest)
 
-        # Mask the impossible actions
+        mask = torch.zeros_like(embedding_mat)
         for a in possible_actions:
-            embedding_mat = torch.where(a, embedding_mat, torch.zeros_like(embedding_mat))
+            mask[a[0], a[1]] = 1
+
+        # Put to zero all the positions that are not in possible_actions
+        embedding_mat = torch.where(mask == 1, embedding_mat, torch.zeros_like(embedding_mat)-1000)
 
         # Flatten the matrix
         embedding_mat = embedding_mat.flatten()
 
         # Softmax the output
         actions_prob = F.softmax(embedding_mat, dim=0)
-
-        return actions_prob
-
-
-class DeployNet(nn.Module):
-    def __init__(self, nb_territories=6, hidden_size=16):
-        super(DeployNet, self).__init__()
-
-        self.input_fc = nn.Linear(nb_territories, hidden_size)
-        #self.output_fc = nn.Linear(hidden_size+1, nb_territories)
-        self.output_fc = nn.Linear(hidden_size, nb_territories)
-
-    def forward(self, reinforcements, player_presence_map):
-
-        # Find the possible actions (territories where the player has a presence)
-        possible_actions = (player_presence_map > 0)
-
-        # Apply a linear layer to the input
-        x = (self.input_fc(player_presence_map))
-
-        # Concatenate the reinforcements to the output
-        #x = torch.cat((x, reinforcements), dim=0)
-
-        # Apply a linear layer to the output
-        x = (self.output_fc(x))
-
-        # Mask the impossible actions
-        x[~possible_actions] = 0
-
-        # Softmax the output
-        actions_prob = F.softmax(x, dim=0)
 
         return actions_prob
 
@@ -112,7 +115,7 @@ class PolicyGradientAgent():
 
         # Decode the action into a territory pair
         t_orig = action // self.nb_territories
-        t_dest = 1+(action % self.nb_territories)
+        t_dest = (action % self.nb_territories)
 
         return t_orig.item(), t_dest.item(), m.log_prob(action)
 
@@ -128,7 +131,7 @@ class PolicyGradientAgent():
 
         # Decode the action into a territory pair
         t_orig = action // self.nb_territories
-        t_dest = 1+(action % self.nb_territories)
+        t_dest = (action % self.nb_territories)
 
         return t_orig.item(), t_dest.item(), m.log_prob(action)
 
@@ -151,7 +154,7 @@ class PolicyGradientAgent():
 
         # Decode the action into a territory pair
         t_orig = action // self.nb_territories
-        t_dest = 1+(action % self.nb_territories)
+        t_dest = (action % self.nb_territories)
 
         return t_orig.item(), t_dest.item()
 
@@ -166,7 +169,7 @@ class PolicyGradientAgent():
 
         # Decode the action into a territory pair
         t_orig = action // self.nb_territories
-        t_dest = 1+(action % self.nb_territories)
+        t_dest = (action % self.nb_territories)
 
         return t_orig.item(), t_dest.item()
 
@@ -193,9 +196,6 @@ class NaiveAgent():
         """Returns the territory to fortify at the end of the turn"""
         return fortifications[0]
 
-    def update(self, rewards, log_probs, values):
-        pass
-
 
 class RandomAgent():
     def __init__(self, nb_territories=6):
@@ -217,6 +217,3 @@ class RandomAgent():
     def choose_fortify(self, fortifications, player_presence_map):
         """Returns the territory to fortify at the end of the turn"""
         return fortifications[np.random.randint(len(fortifications))]
-
-    def update(self, rewards, log_probs, values):
-        pass
