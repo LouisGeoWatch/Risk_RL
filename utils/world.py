@@ -2,10 +2,11 @@ import numpy as np
 
 
 class World():
-    def __init__(self, map_graph, presence_map, nb_players):
+    def __init__(self, map_graph, presence_map, nb_players, reinforcements_param=3):
         self.map_graph = map_graph.copy()
         self.presence_map = presence_map.copy()
         self.nb_players = nb_players
+        self.reinforcements_param = reinforcements_param
 
     def get_territories(self, p):
         """Returns the territories belonging to player p
@@ -75,7 +76,7 @@ class World():
         """Returns the number of reinforcements
             based on the number ot territories
             controlled by player p"""
-        return 3*len(self.get_territories(p))
+        return self.reinforcements_param*len(self.get_territories(p))
 
     def get_player_presence_map(self, p):
         """Returns the presence map of player p

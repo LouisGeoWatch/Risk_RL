@@ -179,6 +179,16 @@ class PolicyGradientAgent():
 
         return t_orig.item(), t_dest.item()
 
+    def save(self, path):
+        torch.save(self.deploy_policy.state_dict(), path + 'deploy_policy.pt')
+        torch.save(self.attack_policy.state_dict(), path + 'attack_policy.pt')
+        torch.save(self.fortify_policy.state_dict(), path + 'fortify_policy.pt')
+
+    def load(self, path):
+        self.deploy_policy.load_state_dict(torch.load(path + 'deploy_policy.pt'))
+        self.attack_policy.load_state_dict(torch.load(path + 'attack_policy.pt'))
+        self.fortify_policy.load_state_dict(torch.load(path + 'fortify_policy.pt'))
+
 
 # We write a Naive Agent that always takes the first possible action among the possible ones
 class NaiveAgent():

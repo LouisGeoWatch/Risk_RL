@@ -38,6 +38,19 @@ presence_map = np.array([
     [0, 0, 0, 0, 2, 2]
 ])
 
+layout = {0: np.array([0.5, 0.5]),
+          1: np.array([0.5, 0.3]),
+          2: np.array([0.5, 0.7]),
+          3: np.array([0.7, 0.5]),
+          4: np.array([0.3, 0.5]),
+          5: np.array([0.3, 0.3])
+          }
+
+colors = {0: 'red', 1: 'blue', 2: 'green', 3: 'yellow',
+          4: 'purple', 5: 'orange', 6: 'black', 7: 'white'}
+
+label_options = {"ec": "k", "fc": "white", "alpha": 0.3}
+
 
 # Probabilities of winning
 def pb_table(N=50):
@@ -64,24 +77,27 @@ def pb_table(N=50):
 
 proba_table = np.array(pb_table()).T
 
-colors = {0: 'red', 1: 'blue', 2: 'green', 3: 'yellow',
-          4: 'purple', 5: 'orange', 6: 'black', 7: 'white'}
-
 
 class Game():
     def __init__(self, map_graph=map_graph, presence_map=presence_map,
                  nb_players=nb_player, proba_table=proba_table,
-                 countries=countries, colors=colors):
+                 reinforcement_param=3,
+                 countries=countries, colors=colors, layout=layout,
+                 label_options=label_options):
+
         self.map_graph = map_graph.copy()
         self.presence_map = presence_map.copy()
         self.players = nb_players
         self.proba_table = proba_table
         self.cur_turn = 0
         self.game_over = False
+        self.reinforcement_param = reinforcement_param
         self.countries = countries
         self.colors = colors
+        self.layout = layout
+        self.label_options = label_options
+        self.world = World(self.map_graph, self.presence_map, self.players, self.reinforcement_param)
 
-        self.world = World(self.map_graph, self.presence_map, self.players)
         self.agents = {i: PolicyGradientAgent() for i in range(self.players)}
 
     def reset_world(self):
@@ -137,12 +153,16 @@ class Game():
 
     def visualize(self):
         """Visualizes the game with networkx package"""
-        draw_map(self.world.map_graph, self.world.presence_map)
+        draw_map(self.world.map_graph, self.world.presence_map,
+                 countries=self.countries, layout=self.layout,
+                 label_options=self.label_options)
 
     def visualize_and_save(self, title=None, save_path=None):
         """Visualizes the game with networkx package and saves it"""
         draw_map_and_save(self.world.map_graph, self.world.presence_map,
-                          title=title, filename=save_path)
+                          title=title, filename=save_path,
+                          countries=self.countries, layout=self.layout,
+                          label_options=self.label_options)
 
     def run(self, max_turns=20):
         """Runs the game until it is over"""
