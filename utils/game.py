@@ -176,13 +176,13 @@ class Game():
             # Check if the game is over
             self.game_over = self.world.check_game_over()
 
-    def run_and_save(self):
+    def run_and_save(self, max_turns=20):
         """Runs the game until it is over and saves the game states"""
         self.reset_world()
         self.cur_turn = 0
         self.game_over = False
 
-        while not self.game_over and self.cur_turn < 20:
+        while not self.game_over and self.cur_turn < max_turns:
             # Add a 0 to the turn number if it is less than 10
             cur_turn_str = str(self.cur_turn) if self.cur_turn >= 10 else "0" + str(self.cur_turn)
 
