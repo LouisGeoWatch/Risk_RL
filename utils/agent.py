@@ -233,7 +233,8 @@ class RandomAgent():
     def choose_fortify(self, fortifications, player_presence_map):
         """Returns the territory to fortify at the end of the turn"""
         return fortifications[np.random.randint(len(fortifications))]
-    
+
+
 class GengisKhan():
     def __init__(self, nb_territories=6):
         self.nb_territories = nb_territories
@@ -243,20 +244,21 @@ class GengisKhan():
         # Always deploy on the strongest territory
         return np.argmax(player_presence_map)
 
-    def choose_attack(self, attacks, player_presence_map, world):
+    def choose_attack(self, attacks, player_presence_map):
         """Returns the territory to attack"""
         # Attacks with the most powerful territory available
         available_troops = [player_presence_map[e[0]] for e in attacks]
         idx_max = np.argmax(available_troops)
         return attacks[idx_max]
 
-    def choose_fortify(self, fortifications, player_presence_map, world):
+    def choose_fortify(self, fortifications, player_presence_map):
         """Returns the territory to fortify at the end of the turn"""
         # Fortify a territory with the most troops possible
         troop_presence = [player_presence_map[start] + player_presence_map[end] - 1
-                       for (start, end) in fortifications]
+                          for (start, end) in fortifications]
         idx_max = np.argmax(troop_presence)
         return fortifications[idx_max]
+
 
 class Courage():
     def __init__(self, nb_territories=6):
@@ -271,13 +273,13 @@ class Courage():
         # Find the number of troops on each territory
         available_troops = np.array([[t, player_presence_map[t]] for t in possible_actions])
         # Choose the weakest territory
-        weakest = np.amin(available_troops, axis = 0)[1]
+        weakest = np.amin(available_troops, axis=0)[1]
         return player_presence_map.index(weakest)
 
     def choose_attack(self, attacks, player_presence_map):
         """Returns the territory to attack"""
         # Attacks the weakest troops with its strongest troop
-        delta_troops = [player_presence_map[start] + player_presence_map[end] 
+        delta_troops = [player_presence_map[start] + player_presence_map[end]
                         for (start, end) in attacks]
         return attacks[np.argmax(delta_troops)]
 
@@ -285,6 +287,6 @@ class Courage():
         """Returns the territory to fortify at the end of the turn"""
         # Always fortify from the strongest territory possible to the weakest possible
         troop_presence = [player_presence_map[start] - player_presence_map[end]
-                       for (start, end) in fortifications]
+                          for (start, end) in fortifications]
         idx_max = np.argmax(troop_presence)
         return fortifications[idx_max]
