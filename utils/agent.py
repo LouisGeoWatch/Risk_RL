@@ -269,9 +269,10 @@ class Courage():
         # Find the indices of the positive values
         possible_actions = np.where(possible_actions)[0]
         # Find the number of troops on each territory
-        available_troops = [player_presence_map[t] for t in possible_actions]
+        available_troops = np.array([[t, player_presence_map[t]] for t in possible_actions])
         # Choose the weakest territory
-        return np.argmin(available_troops)
+        weakest = np.amin(available_troops, axis = 0)[1]
+        return player_presence_map.index(weakest)
 
     def choose_attack(self, attacks, player_presence_map):
         """Returns the territory to attack"""
