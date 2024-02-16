@@ -2,11 +2,14 @@ import numpy as np
 
 
 class World():
-    def __init__(self, map_graph, presence_map, nb_players, reinforcements_param=3):
+    def __init__(self, map_graph, presence_map, nb_players,
+                 reinforcements_min=3, reinforcements_divider=3, continent_bonuses=None):
         self.map_graph = map_graph.copy()
         self.presence_map = presence_map.copy()
         self.nb_players = nb_players
-        self.reinforcements_param = reinforcements_param
+        self.reinforcements_min = reinforcements_min
+        self.reinforcements_divider = reinforcements_divider
+        self.continent_bonuses = continent_bonuses
 
     def get_territories(self, p):
         """Returns the territories belonging to player p
@@ -17,6 +20,15 @@ class World():
     def check_game_over(self):
         check_vector = np.sum(self.presence_map, axis=1)
         return (np.count_nonzero(check_vector) == 1)
+
+    def check_continent_control(self, p, continent):
+        """Returns True if player p controls the continent"""
+        return np.all(self.presence_map[p][continent] > 0)
+
+    def get_continent_bonuses(self, p):
+        """Returns the bonus for player p"""
+        return sum([self.continent_bonuses[c][1] for c in self.continent_bonuses.keys()
+                    if self.check_continent_control(p, self.continent_bonuses[c][0])])
 
     def deploy(self, p, t, n):
         """Deploys n troops for player p on territory t"""
@@ -76,7 +88,8 @@ class World():
         """Returns the number of reinforcements
             based on the number ot territories
             controlled by player p"""
-        return self.reinforcements_param*len(self.get_territories(p))
+        bonus = self.get_continent_bonuses(p) if self.continent_bonuses is not None else 0
+        return max(self.reinforcements_min, len(self.get_territories(p))//self.reinforcements_divider) + bonus
 
     def get_player_presence_map(self, p):
         """Returns the presence map of player p
